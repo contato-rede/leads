@@ -1,4 +1,4 @@
-import { Business, SearchConfig, Campaign } from "../types";
+import { Business, SearchConfig, Campaign, BackupData } from "../types";
 
 const SEARCH_CONFIG_ID = 'lastSearch';
 const DEFAULT_CAMPAIGN_ID = 'default';
@@ -274,5 +274,52 @@ export class StorageService {
       };
       request.onerror = () => reject("Erro ao verificar campanha padrão");
     });
+  }
+
+  /** Exporta campanhas, leads e config em JSON para backup. */
+  public async exportToJson(): Promise<string> {
+    const [campaigns, leads, searchConfig] = await Promise.all([
+      this.getCampaigns(),
+      this.getAllLeads(),
+      this.getSearchConfig(),
+    ]);
+    const data: BackupData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      campaigns,
+      leads,
+      searchConfig: searchConfig ?? null,
+    };
+    return JSON.stringify(data, null, 2);
+  }
+
+  /** Importa backup JSON (substitui campanhas e leads). */
+  public async importFromJson(json: string): Promise<void> {
+    let data: BackupData;
+    try {
+      data = JSON.parse(json) as BackupData;
+    } catch {
+      throw new Error("Arquivo JSON inválido.");
+    }
+    if (data.version !== 1 || !Array.isArray(data.campaigns) || !Array.isArray(data.leads)) {
+      throw new Error("Formato de backup inválido (esperado: version 1, campaigns e leads).");
+    }
+    const db = await this.getDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([this.storeName, this.campaignsStoreName], 'readwrite');
+      const leadStore = tx.objectStore(this.storeName);
+      const campaignStore = tx.objectStore(this.campaignsStoreName);
+      leadStore.clear();
+      campaignStore.clear();
+      data.campaigns.forEach((c: Campaign) => campaignStore.put({ ...c, updatedAt: c.updatedAt || Date.now() }));
+      data.leads.forEach((l: Business) => leadStore.put({ ...l, campaignId: l.campaignId || DEFAULT_CAMPAIGN_ID }));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error("Erro ao importar"));
+    });
+    if (data.searchConfig) {
+      const c = data.searchConfig;
+      await this.saveSearchConfig({ query: c.query, targetGoal: c.targetGoal, concurrency: c.concurrency, campaignId: c.campaignId });
+    }
+    await this.ensureDefaultCampaign();
   }
 }

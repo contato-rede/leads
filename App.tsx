@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, MapPin, AlertCircle, Info, Loader2, Database, ChevronDown, Trash2, Coins, PlayCircle, StopCircle, Activity, Clock, Zap, Coffee, Timer, FolderOpen, Plus } from 'lucide-react';
+import { Search, MapPin, AlertCircle, Info, Loader2, Database, ChevronDown, Trash2, Coins, PlayCircle, StopCircle, Activity, Clock, Zap, Coffee, Timer, FolderOpen, Plus, Pencil, FileDown, FileUp } from 'lucide-react';
 import { LeadExtractorService } from './services/geminiService';
 import { StorageService } from './services/storageService';
 import { SearchState, Business, Campaign } from './types';
@@ -9,6 +9,70 @@ import { ExportButton } from './components/ExportButton';
 const storageService = new StorageService();
 const DEFAULT_CAMPAIGN_ID = 'default';
 
+const NewCampaignModal: React.FC<{ onConfirm: (name: string) => void; onClose: () => void }> = ({ onConfirm, onClose }) => {
+  const [name, setName] = useState('Nova campanha');
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-bold text-slate-800">Nova campanha</h3>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nome da campanha</label>
+          <input value={name} onChange={e => setName(e.target.value)} className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm" placeholder="Nova campanha" autoFocus />
+        </div>
+        <div className="flex gap-2 justify-end pt-2">
+          <button type="button" onClick={onClose} className="h-11 px-4 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50">Cancelar</button>
+          <button type="button" onClick={() => onConfirm(name.trim() || 'Nova campanha')} className="h-11 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">OK</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const EditCampaignModal: React.FC<{ campaign: Campaign; onSave: (c: Campaign) => void; onClose: () => void }> = ({ campaign, onSave, onClose }) => {
+  const [name, setName] = useState(campaign.name);
+  const [query, setQuery] = useState(campaign.query);
+  const [targetGoal, setTargetGoal] = useState(campaign.targetGoal);
+  const [concurrency, setConcurrency] = useState(campaign.concurrency);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-bold text-slate-800">Editar campanha</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nome</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm" placeholder="Nome da campanha" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">O que buscar?</label>
+            <input value={query} onChange={e => setQuery(e.target.value)} className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm" placeholder="Ex: Retíficas, Santa Catarina" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Meta</label>
+              <select value={targetGoal} onChange={e => setTargetGoal(Number(e.target.value))} className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm bg-white">
+                <option value={20}>20</option>
+                <option value={100}>100</option>
+                <option value={500}>500</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Modo</label>
+              <select value={concurrency} onChange={e => setConcurrency(Number(e.target.value))} className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm bg-white">
+                <option value={1}>1x</option>
+                <option value={2}>2x</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end pt-2">
+          <button type="button" onClick={onClose} className="h-11 px-4 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50">Cancelar</button>
+          <button type="button" onClick={() => onSave({ ...campaign, name: name.trim() || campaign.name, query, targetGoal, concurrency, updatedAt: Date.now() })} className="h-11 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>('');
   const [query, setQuery] = useState<string>('Retífica de Motores em Chapecó, SC');
@@ -17,6 +81,9 @@ const App: React.FC = () => {
   
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [currentCampaignId, setCurrentCampaignId] = useState<string>(DEFAULT_CAMPAIGN_ID);
+  const [editCampaignModal, setEditCampaignModal] = useState<Campaign | null>(null);
+  const [showNewCampaignModal, setShowNewCampaignModal] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   
   const [searchState, setSearchState] = useState<SearchState>({
     isLoading: false,
@@ -98,11 +165,16 @@ const App: React.FC = () => {
     setSearchState(prev => ({ ...prev, results: leads }));
   }, [campaigns]);
 
-  const handleNewCampaign = useCallback(async () => {
+  const handleNewCampaign = useCallback(() => {
+    setShowNewCampaignModal(true);
+  }, []);
+
+  const handleConfirmNewCampaign = useCallback(async (name: string) => {
+    setShowNewCampaignModal(false);
     const id = `camp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const newCampaign: Campaign = {
       id,
-      name: 'Nova campanha',
+      name: name.trim() || 'Nova campanha',
       query: query || 'Retífica de Motores em Chapecó, SC',
       targetGoal: 100,
       concurrency: 1,
@@ -116,6 +188,70 @@ const App: React.FC = () => {
     setConcurrency(newCampaign.concurrency);
     setSearchState(prev => ({ ...prev, results: [] }));
   }, [query]);
+
+  const handleSaveEditCampaign = useCallback(async (updated: Campaign) => {
+    await storageService.saveCampaign(updated);
+    setCampaigns(prev => prev.map(c => c.id === updated.id ? updated : c));
+    setEditCampaignModal(null);
+    if (currentCampaignId === updated.id) {
+      setQuery(updated.query);
+      setTargetGoal(updated.targetGoal);
+      setConcurrency(updated.concurrency);
+    }
+  }, [currentCampaignId]);
+
+  const handleDeleteCampaign = useCallback(async () => {
+    if (currentCampaignId === '__all__' || currentCampaignId === DEFAULT_CAMPAIGN_ID) return;
+    if (!window.confirm('Excluir esta campanha? Os leads dela continuarão visíveis em "Todos os leads".')) return;
+    try {
+      await storageService.deleteCampaign(currentCampaignId);
+      setCampaigns(prev => prev.filter(c => c.id !== currentCampaignId));
+      setCurrentCampaignId('__all__');
+      const leads = await storageService.getAllLeads();
+      setSearchState(prev => ({ ...prev, results: leads }));
+    } catch (e) {
+      setSearchState(prev => ({ ...prev, error: 'Erro ao excluir campanha.' }));
+    }
+  }, [currentCampaignId]);
+
+  const handleExportBackup = useCallback(async () => {
+    try {
+      const json = await storageService.exportToJson();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_rede_uniao_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setSearchState(prev => ({ ...prev, error: 'Erro ao exportar backup.' }));
+    }
+  }, []);
+
+  const handleImportBackup = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const text = await file.text();
+      await storageService.importFromJson(text);
+      const allCampaigns = await storageService.getCampaigns();
+      setCampaigns(allCampaigns.length > 0 ? allCampaigns : [{ id: DEFAULT_CAMPAIGN_ID, name: 'Campanha padrão', query: '', targetGoal: 100, concurrency: 1, updatedAt: Date.now() }]);
+      setCurrentCampaignId(allCampaigns.length > 0 ? allCampaigns[0].id : DEFAULT_CAMPAIGN_ID);
+      const firstId = allCampaigns.length > 0 ? allCampaigns[0].id : DEFAULT_CAMPAIGN_ID;
+      const leads = await storageService.getAllLeads(firstId);
+      setSearchState(prev => ({ ...prev, results: leads, error: null }));
+      if (allCampaigns.length > 0) {
+        const c = allCampaigns[0];
+        setQuery(c.query);
+        setTargetGoal(c.targetGoal);
+        setConcurrency(c.concurrency);
+      }
+    } catch (err: any) {
+      setSearchState(prev => ({ ...prev, error: err?.message || 'Erro ao importar backup.' }));
+    }
+  }, []);
 
   const handleClearData = async () => {
     if (window.confirm("Apagar tudo?")) {
@@ -248,22 +384,31 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-blue-600 fill-blue-600" />
-            <h1 className="text-xl font-bold">Rede Uniao <span className="text-blue-600">Maps 2.5</span></h1>
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-0 sm:h-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 min-h-[44px]">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 fill-blue-600 flex-shrink-0" />
+              <h1 className="text-base sm:text-xl font-bold">Rede Uniao <span className="text-blue-600">Maps 2.5</span></h1>
+            </div>
+            <div className="flex sm:hidden items-center gap-2">
+              <span className={`text-xs font-bold ${apiKey.trim() ? 'text-green-600' : 'text-amber-600'}`}>
+                {apiKey.trim() ? 'Chave ✓' : 'Sem chave'}
+              </span>
+              <span className="text-xs font-bold text-slate-700">${searchState.totalCost.toFixed(3)}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-             <div className="flex flex-col items-end">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+             <div className="hidden sm:flex flex-col items-end">
                 <span className="text-[10px] font-bold text-slate-400 leading-none uppercase tracking-tighter">Chave API</span>
                 <span className={`text-sm font-bold ${apiKey.trim() ? 'text-green-600' : 'text-amber-600'}`}>
                   {apiKey.trim() ? 'Configurada ✓' : 'Não inserida'}
                 </span>
              </div>
-             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-xs bg-slate-100 px-3 py-1.5 rounded-lg text-blue-600 font-bold hover:bg-blue-50 transition-colors" title="Abre o site para criar/copiar a chave — depois cole no campo abaixo">
-                Obter chave
+             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-xs bg-slate-100 px-3 py-2.5 sm:py-1.5 rounded-lg text-blue-600 font-bold hover:bg-blue-50 transition-colors min-h-[44px] inline-flex items-center justify-center flex-1 sm:flex-initial" title="Abrir Google AI Studio e criar chave">
+                <span className="hidden sm:inline">Abrir Google AI Studio e criar chave</span>
+                <span className="sm:hidden">Criar chave (Google AI Studio)</span>
              </a>
-             <div className="flex flex-col items-end">
+             <div className="hidden sm:flex flex-col items-end">
                 <span className="text-[10px] font-bold text-slate-400 leading-none uppercase tracking-tighter">Investimento IA</span>
                 <span className="text-sm font-bold text-slate-700">${searchState.totalCost.toFixed(3)}</span>
              </div>
@@ -271,105 +416,158 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-xs font-bold text-slate-500 uppercase">Campanha</label>
-              <select
-                value={currentCampaignId}
-                onChange={(e) => handleSelectCampaign(e.target.value)}
-                className="h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-w-[200px]"
-              >
-                <option value="__all__">Todos os leads</option>
-                {campaigns.map(c => (
-                  <option key={c.id} value={c.id}>{c.name || c.query || c.id}</option>
-                ))}
-              </select>
-              <button type="button" onClick={handleNewCampaign} className="h-10 px-3 rounded-lg border border-slate-200 text-sm font-medium flex items-center gap-1.5 hover:bg-slate-50">
-                <Plus className="w-4 h-4" /> Nova campanha
-              </button>
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
+        <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
+              <label className="text-xs font-bold text-slate-500 uppercase sm:mb-0">Campanha</label>
+              <div className="flex flex-wrap gap-2 flex-1 sm:flex-initial">
+                <select
+                  value={currentCampaignId}
+                  onChange={(e) => handleSelectCampaign(e.target.value)}
+                  className="h-11 sm:h-10 flex-1 min-w-0 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]"
+                >
+                  <option value="__all__">Todos os leads</option>
+                  {campaigns.map(c => (
+                    <option key={c.id} value={c.id}>{c.name || c.query || c.id}</option>
+                  ))}
+                </select>
+                {currentCampaignId !== '__all__' && (
+                  <>
+                    <button type="button" onClick={() => setEditCampaignModal(campaigns.find(c => c.id === currentCampaignId) ?? null)} className="h-11 w-11 min-h-[44px] rounded-lg border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-50 shrink-0" title="Editar campanha">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    {currentCampaignId !== DEFAULT_CAMPAIGN_ID && (
+                      <button type="button" onClick={handleDeleteCampaign} className="h-11 w-11 min-h-[44px] rounded-lg border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-red-50 hover:text-red-600 shrink-0" title="Excluir campanha">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+                <button type="button" onClick={handleNewCampaign} className="h-11 px-4 rounded-lg border border-slate-200 text-sm font-medium flex items-center gap-1.5 hover:bg-slate-50 min-h-[44px] shrink-0">
+                  <Plus className="w-4 h-4" /> <span className="sm:inline">Nova campanha</span>
+                </button>
+              </div>
             </div>
+            {showNewCampaignModal && (
+              <NewCampaignModal
+                onConfirm={handleConfirmNewCampaign}
+                onClose={() => setShowNewCampaignModal(false)}
+              />
+            )}
+            {editCampaignModal && (
+              <EditCampaignModal
+                campaign={editCampaignModal}
+                onSave={handleSaveEditCampaign}
+                onClose={() => setEditCampaignModal(null)}
+              />
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className={apiKey.trim() ? '' : 'ring-2 ring-amber-200 ring-offset-2 rounded-xl p-1 -m-1'}>
                     <label className="text-xs font-bold text-slate-500 uppercase block">
                       Chave API Gemini <span className="text-amber-600 font-normal normal-case">(obrigatório)</span>
                     </label>
+
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mt-1.5 mb-2 text-xs text-slate-600 space-y-1.5">
+                      <p className="font-semibold text-slate-700">Como obter sua chave:</p>
+                      <ol className="list-decimal list-inside space-y-0.5">
+                        <li>Toque em <strong>&quot;Criar chave (Google AI Studio)&quot;</strong> no topo da tela.</li>
+                        <li>Faça login com sua conta Google, se pedir.</li>
+                        <li>Toque em <strong>Create API key</strong> e escolha um projeto.</li>
+                        <li>Copie a chave e volte aqui para colar no campo abaixo.</li>
+                      </ol>
+                    </div>
+
                     <input
                       type="password"
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      className="w-full h-11 px-4 mt-1 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Clique aqui e cole a chave do Google AI Studio"
-                      title="Cole a chave que você copiou do link 'Obter chave'"
+                      className="w-full h-11 min-h-[44px] px-4 mt-1 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base"
+                      placeholder="Cole sua chave aqui"
+                      title="Cole só a chave (letras e números)"
+                      autoComplete="off"
                     />
                     <p className="text-xs text-slate-400 mt-1.5">
-                      Obtenha em <strong>Obter chave</strong> (canto superior) → depois <strong>cole neste campo</strong>.
+                      Não tem chave? Use o botão <strong>Abrir Google AI Studio e criar chave</strong> acima, crie uma e depois volte e cole aqui.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Dica: no celular, segure no texto da chave para copiar; aqui, segure no campo para colar.
+                    </p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      Cole só a chave (letras e números). Não cole o link da página nem seu e-mail.
                     </p>
                 </div>
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase">O que buscar?</label>
-                    <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} className="w-full h-11 px-4 mt-1 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Vidraçarias em Goiânia" />
+                    <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} className="w-full h-11 min-h-[44px] px-4 mt-1 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base" placeholder="Ex: Vidraçarias em Goiânia" />
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t">
-                <div className="flex gap-4">
-                    <div>
+            <div className="flex flex-col gap-4 pt-4 border-t">
+                <div className="flex flex-wrap gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-[120px]">
                         <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Meta</label>
-                        <select value={targetGoal} onChange={(e) => setTargetGoal(Number(e.target.value))} className="h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium">
+                        <select value={targetGoal} onChange={(e) => setTargetGoal(Number(e.target.value))} className="w-full h-11 sm:h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]">
                             <option value="20">20 Leads</option>
                             <option value="100">100 Leads</option>
                             <option value="500">500 Leads</option>
                         </select>
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-[120px]">
                         <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Modo Seguro</label>
-                        <select value={concurrency} onChange={(e) => setConcurrency(Number(e.target.value))} className="h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium">
+                        <select value={concurrency} onChange={(e) => setConcurrency(Number(e.target.value))} className="w-full h-11 sm:h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]">
                             <option value="1">1x (Recomendado)</option>
                             <option value="2">2x (Rápido/Instável)</option>
                         </select>
                     </div>
                 </div>
 
-                <div className="flex gap-2 w-full md:w-auto">
+                <div className="w-full">
                     {searchState.isLooping ? (
-                        <button onClick={() => abortControllerRef.current = true} className="h-11 flex-1 px-8 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all">
-                           <StopCircle className="w-4 h-4" /> Parar Extração ({searchState.results.length} na base · meta {targetGoal})
+                        <button onClick={() => abortControllerRef.current = true} className="w-full h-12 min-h-[48px] px-4 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 active:bg-slate-700 transition-all touch-manipulation">
+                           <StopCircle className="w-5 h-5 flex-shrink-0" /> Parar Extração ({searchState.results.length} na base · meta {targetGoal})
                         </button>
                     ) : (
-                        <button onClick={() => executeSearch(true)} disabled={searchState.isLoading || currentCampaignId === '__all__'} className="h-11 flex-1 px-10 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 flex items-center justify-center gap-2 hover:bg-blue-700 transition-all disabled:opacity-50" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
-                           {searchState.isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><PlayCircle className="w-4 h-4" /> Iniciar Robô</>}
+                        <button onClick={() => executeSearch(true)} disabled={searchState.isLoading || currentCampaignId === '__all__'} className="w-full h-12 min-h-[48px] px-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
+                           {searchState.isLoading ? <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" /> : <><PlayCircle className="w-5 h-5 flex-shrink-0" /> Iniciar Robô</>}
                         </button>
                     )}
                 </div>
             </div>
 
             {configRestored && searchState.results.length > 0 && !searchState.isLoading && !searchState.isLooping && (
-              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-sm">
-                <span>
-                  Configuração da última busca restaurada. Você tem <strong>{searchState.results.length} leads</strong> na base — clique em <strong>Iniciar Robô</strong> para continuar até a meta ({targetGoal}).
+              <div className="flex items-start sm:items-center justify-between gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs sm:text-sm">
+                <span className="min-w-0">
+                  Configuração da última busca restaurada. Você tem <strong>{searchState.results.length} leads</strong> na base — toque em <strong>Iniciar Robô</strong> para continuar até a meta ({targetGoal}).
                 </span>
-                <button type="button" onClick={() => setConfigRestored(false)} className="text-blue-600 hover:text-blue-800 font-bold px-2 py-1 rounded" aria-label="Fechar">✕</button>
+                <button type="button" onClick={() => setConfigRestored(false)} className="text-blue-600 hover:text-blue-800 font-bold p-2 min-w-[44px] min-h-[44px] rounded touch-manipulation flex-shrink-0" aria-label="Fechar">✕</button>
               </div>
             )}
         </div>
 
         {searchState.error && (
-            <div className={`p-4 rounded-xl flex items-center gap-3 border transition-all ${searchState.error.includes("☕") ? 'bg-blue-50 border-blue-200 text-blue-800 animate-pulse' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                {searchState.error.includes("☕") ? <Coffee className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                <span className="text-sm font-semibold">{searchState.error}</span>
+            <div className={`p-3 sm:p-4 rounded-xl flex items-start sm:items-center gap-3 border transition-all ${searchState.error.includes("☕") ? 'bg-blue-50 border-blue-200 text-blue-800 animate-pulse' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                {searchState.error.includes("☕") ? <Coffee className="w-5 h-5 flex-shrink-0 mt-0.5 sm:mt-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 sm:mt-0" />}
+                <span className="text-xs sm:text-sm font-semibold min-w-0 break-words">{searchState.error}</span>
             </div>
         )}
 
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div className="flex items-center gap-3">
-                    <h2 className="text-lg font-bold">Base Minerada</h2>
+                    <h2 className="text-base sm:text-lg font-bold">Base Minerada</h2>
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{searchState.results.length} leads</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap items-center">
+                    <button type="button" onClick={handleExportBackup} className="p-3 sm:p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-all min-h-[44px] flex items-center gap-2 touch-manipulation border border-slate-200 text-sm font-medium" title="Exportar backup JSON">
+                      <FileDown className="w-4 h-4" /> <span className="sm:inline">Backup</span>
+                    </button>
+                    <button type="button" onClick={() => importInputRef.current?.click()} className="p-3 sm:p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-all min-h-[44px] flex items-center gap-2 touch-manipulation border border-slate-200 text-sm font-medium" title="Importar backup JSON">
+                      <FileUp className="w-4 h-4" /> <span className="sm:inline">Importar</span>
+                    </button>
+                    <input ref={importInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImportBackup} />
                     {searchState.results.length > 0 && (
-                        <button onClick={handleClearData} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Limpar Banco de Dados">
+                        <button onClick={handleClearData} className="p-3 sm:p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation" title="Limpar Banco de Dados">
                             <Trash2 className="w-5 h-5" />
                         </button>
                     )}
@@ -380,10 +578,10 @@ const App: React.FC = () => {
             {searchState.results.length > 0 ? (
               <ResultsTable results={searchState.results} onDelete={handleDeleteLead} />
             ) : (
-              <div className="py-24 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl text-slate-400">
-                <Database className="w-16 h-16 mb-4 opacity-10" />
-                <p className="font-semibold text-slate-400">O banco de dados está vazio.</p>
-                <p className="text-xs text-slate-300 mt-1">Configure a API e inicie a mineração.</p>
+              <div className="py-16 sm:py-24 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-2xl sm:rounded-3xl text-slate-400 px-4">
+                <Database className="w-12 h-12 sm:w-16 sm:h-16 mb-4 opacity-10" />
+                <p className="font-semibold text-slate-400 text-sm sm:text-base text-center">O banco de dados está vazio.</p>
+                <p className="text-xs text-slate-300 mt-1 text-center">Configure a API e inicie a mineração.</p>
               </div>
             )}
         </div>

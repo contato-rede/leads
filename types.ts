@@ -55,6 +55,15 @@ export interface Campaign {
   updatedAt: number;
 }
 
+/** Estrutura do backup JSON (campanhas + leads + config). */
+export interface BackupData {
+  version: number;
+  exportedAt: string;
+  campaigns: Campaign[];
+  leads: Business[];
+  searchConfig?: SearchConfig | null;
+}
+
 export enum SortField {
   NAME = 'name',
   RATING = 'rating',

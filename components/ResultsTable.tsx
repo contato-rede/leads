@@ -1,12 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { List } from 'react-window';
 import { Business, SortField, SortOrder } from '../types';
 import { Star, MapPin, Phone, Globe, ArrowUpDown, Trash2, ArrowUp, ArrowDown, Facebook, Instagram, Info } from 'lucide-react';
 
 const ROW_HEIGHT = 100;
-const TABLE_HEIGHT = 600;
-const HEADER_HEIGHT = 56;
-const FOOTER_HEIGHT = 44;
+const HEADER_HEIGHT = 48;
+const FOOTER_HEIGHT = 40;
 
 interface ResultsTableProps {
   results: Business[];
@@ -69,7 +68,7 @@ function RowContent({ biz, onDelete }: { biz: Business; onDelete: (id: string) =
       <div className="text-right">
         <button
           onClick={() => onDelete(biz.id)}
-          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+          className="p-2 sm:p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
           title="Remover lead"
         >
           <Trash2 className="w-4 h-4" />
@@ -112,48 +111,63 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({ results, onDelete })
     return sortOrder === SortOrder.ASC ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />;
   };
 
-  const listHeight = TABLE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [listHeight, setListHeight] = useState(350);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setListHeight(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ height: TABLE_HEIGHT }}>
-      <div
-        className="bg-slate-50 border-b border-slate-200 shrink-0 grid items-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-        style={{ gridTemplateColumns: gridCols, height: HEADER_HEIGHT }}
-      >
-        <div onClick={() => handleSort(SortField.NAME)} className="cursor-pointer group hover:bg-slate-100 -mx-2 px-2 py-1 rounded flex items-center gap-1">
-          Empresa / Detalhes <SortIcon field={SortField.NAME} />
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[min(420px,55vh)] sm:h-[600px]">
+      <div className="overflow-x-auto flex-1 flex flex-col min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="min-w-[640px] flex flex-col flex-1 min-h-0">
+          <div
+            className="bg-slate-50 border-b border-slate-200 shrink-0 grid items-center px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider"
+            style={{ gridTemplateColumns: gridCols, height: HEADER_HEIGHT }}
+          >
+            <div onClick={() => handleSort(SortField.NAME)} className="cursor-pointer active:bg-slate-100 -mx-2 px-2 py-1 rounded flex items-center gap-1 touch-manipulation">
+              Empresa / Detalhes <SortIcon field={SortField.NAME} />
+            </div>
+            <div onClick={() => handleSort(SortField.RATING)} className="cursor-pointer active:bg-slate-100 -mx-2 px-2 py-1 rounded flex items-center gap-1 w-28">
+              Avaliação <SortIcon field={SortField.RATING} />
+            </div>
+            <div>Contato & Social</div>
+            <div>Endereço</div>
+            <div></div>
+          </div>
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-hidden">
+            {sortedResults.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[200px] text-slate-400 text-sm p-4">Nenhum lead nesta campanha.</div>
+            ) : (
+              <List
+              rowCount={sortedResults.length}
+              rowHeight={ROW_HEIGHT}
+              overscanCount={4}
+              rowComponent={({ index, style }) => {
+                const biz = sortedResults[index];
+                return (
+                  <div className="grid gap-0 border-b border-slate-100 hover:bg-blue-50/50 active:bg-blue-50/50 group items-start py-2 sm:py-3 px-3 sm:px-4" style={{ ...style, display: 'grid', gridTemplateColumns: gridCols, alignItems: 'start' }}>
+                    <RowContent biz={biz} onDelete={onDelete} />
+                  </div>
+                );
+              }}
+              rowProps={{}}
+              style={{ height: listHeight }}
+            />
+            )}
+          </div>
         </div>
-        <div onClick={() => handleSort(SortField.RATING)} className="cursor-pointer group hover:bg-slate-100 -mx-2 px-2 py-1 rounded flex items-center gap-1 w-28">
-          Avaliação <SortIcon field={SortField.RATING} />
-        </div>
-        <div>Contato & Social</div>
-        <div>Endereço</div>
-        <div></div>
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {sortedResults.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-slate-400 text-sm">Nenhum lead nesta campanha.</div>
-        ) : (
-          <List
-            rowCount={sortedResults.length}
-            rowHeight={ROW_HEIGHT}
-            overscanCount={5}
-            rowComponent={({ index, style }) => {
-              const biz = sortedResults[index];
-              return (
-                <div className="grid gap-0 border-b border-slate-100 hover:bg-blue-50/50 group items-start py-3 px-4" style={{ ...style, display: 'grid', gridTemplateColumns: gridCols, alignItems: 'start' }}>
-                  <RowContent biz={biz} onDelete={onDelete} />
-                </div>
-              );
-            }}
-            rowProps={{}}
-            style={{ height: listHeight }}
-          />
-        )}
-      </div>
-      <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center shrink-0">
+      <div className="bg-slate-50 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 text-[10px] sm:text-xs text-slate-500 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 shrink-0">
         <span>Mostrando {sortedResults.length} resultados</span>
-        <span>Dados fornecidos pelo Google Maps & Search</span>
+        <span className="hidden sm:inline">Dados fornecidos pelo Google Maps & Search</span>
       </div>
     </div>
   );
