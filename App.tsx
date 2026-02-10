@@ -420,32 +420,34 @@ const App: React.FC = () => {
         <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
               <label className="text-xs font-bold text-slate-500 uppercase sm:mb-0">Campanha</label>
-              <div className="flex flex-wrap gap-2 flex-1 sm:flex-initial">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 flex-1 sm:flex-initial min-w-0 w-full sm:w-auto">
                 <select
                   value={currentCampaignId}
                   onChange={(e) => handleSelectCampaign(e.target.value)}
-                  className="h-11 sm:h-10 flex-1 min-w-0 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]"
+                  className="h-11 sm:h-10 w-full min-w-0 sm:min-w-[180px] flex-1 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]"
                 >
                   <option value="__all__">Todos os leads</option>
                   {campaigns.map(c => (
                     <option key={c.id} value={c.id}>{c.name || c.query || c.id}</option>
                   ))}
                 </select>
-                {currentCampaignId !== '__all__' && (
-                  <>
-                    <button type="button" onClick={() => setEditCampaignModal(campaigns.find(c => c.id === currentCampaignId) ?? null)} className="h-11 w-11 min-h-[44px] rounded-lg border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-50 shrink-0" title="Editar campanha">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    {currentCampaignId !== DEFAULT_CAMPAIGN_ID && (
-                      <button type="button" onClick={handleDeleteCampaign} className="h-11 w-11 min-h-[44px] rounded-lg border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-red-50 hover:text-red-600 shrink-0" title="Excluir campanha">
-                        <Trash2 className="w-4 h-4" />
+                <div className="flex gap-2 flex-shrink-0">
+                  {currentCampaignId !== '__all__' && (
+                    <>
+                      <button type="button" onClick={() => setEditCampaignModal(campaigns.find(c => c.id === currentCampaignId) ?? null)} className="h-11 w-11 min-h-[44px] rounded-lg border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-50 shrink-0" title="Editar campanha">
+                        <Pencil className="w-4 h-4" />
                       </button>
-                    )}
-                  </>
-                )}
-                <button type="button" onClick={handleNewCampaign} className="h-11 px-4 rounded-lg border border-slate-200 text-sm font-medium flex items-center gap-1.5 hover:bg-slate-50 min-h-[44px] shrink-0">
-                  <Plus className="w-4 h-4" /> <span className="sm:inline">Nova campanha</span>
-                </button>
+                      {currentCampaignId !== DEFAULT_CAMPAIGN_ID && (
+                        <button type="button" onClick={handleDeleteCampaign} className="h-11 w-11 min-h-[44px] rounded-lg border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-red-50 hover:text-red-600 shrink-0" title="Excluir campanha">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <button type="button" onClick={handleNewCampaign} className="h-11 px-4 rounded-lg border border-slate-200 text-sm font-medium flex items-center gap-1.5 hover:bg-slate-50 min-h-[44px] shrink-0">
+                    <Plus className="w-4 h-4" /> <span className="sm:inline">Nova campanha</span>
+                  </button>
+                </div>
               </div>
             </div>
             {showNewCampaignModal && (
@@ -503,44 +505,41 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4 pt-4 border-t">
-                <div className="flex flex-wrap gap-3 sm:gap-4">
-                    <div className="flex-1 min-w-[120px]">
-                        <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Meta</label>
-                        <select value={targetGoal} onChange={(e) => setTargetGoal(Number(e.target.value))} className="w-full h-11 sm:h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]">
-                            <option value="20">20 Leads</option>
-                            <option value="100">100 Leads</option>
-                            <option value="500">500 Leads</option>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 pt-3 border-t">
+                <div className="flex gap-2 flex-1 min-w-0">
+                    <div className="flex-1 min-w-0">
+                        <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase">Meta</label>
+                        <select value={targetGoal} onChange={(e) => setTargetGoal(Number(e.target.value))} className="w-full h-10 min-h-[44px] px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium">
+                            <option value="20">20</option>
+                            <option value="100">100</option>
+                            <option value="500">500</option>
                         </select>
                     </div>
-                    <div className="flex-1 min-w-[120px]">
-                        <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Modo Seguro</label>
-                        <select value={concurrency} onChange={(e) => setConcurrency(Number(e.target.value))} className="w-full h-11 sm:h-10 px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium min-h-[44px]">
-                            <option value="1">1x (Recomendado)</option>
-                            <option value="2">2x (Rápido/Instável)</option>
+                    <div className="flex-1 min-w-0 max-w-[140px]">
+                        <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase">Modo</label>
+                        <select value={concurrency} onChange={(e) => setConcurrency(Number(e.target.value))} className="w-full h-10 min-h-[44px] px-3 rounded-lg border border-slate-200 text-sm bg-white font-medium">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
                         </select>
                     </div>
                 </div>
-
-                <div className="w-full">
+                <div className="flex-shrink-0 w-full sm:w-auto">
                     {searchState.isLooping ? (
-                        <button onClick={() => abortControllerRef.current = true} className="w-full h-12 min-h-[48px] px-4 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 active:bg-slate-700 transition-all touch-manipulation">
-                           <StopCircle className="w-5 h-5 flex-shrink-0" /> Parar Extração ({searchState.results.length} na base · meta {targetGoal})
+                        <button onClick={() => abortControllerRef.current = true} className="w-full sm:w-auto h-10 min-h-[44px] px-4 bg-slate-900 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-slate-800 active:bg-slate-700 transition-all touch-manipulation text-sm">
+                           <StopCircle className="w-4 h-4 flex-shrink-0" /> Parar ({searchState.results.length} · meta {targetGoal})
                         </button>
                     ) : (
-                        <button onClick={() => executeSearch(true)} disabled={searchState.isLoading || currentCampaignId === '__all__'} className="w-full h-12 min-h-[48px] px-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
-                           {searchState.isLoading ? <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" /> : <><PlayCircle className="w-5 h-5 flex-shrink-0" /> Iniciar Robô</>}
+                        <button onClick={() => executeSearch(true)} disabled={searchState.isLoading || currentCampaignId === '__all__'} className="w-full sm:w-auto h-10 min-h-[44px] px-4 bg-blue-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation text-sm" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
+                           {searchState.isLoading ? <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" /> : <><PlayCircle className="w-4 h-4 flex-shrink-0" /> Iniciar Robô</>}
                         </button>
                     )}
                 </div>
             </div>
 
             {configRestored && searchState.results.length > 0 && !searchState.isLoading && !searchState.isLooping && (
-              <div className="flex items-start sm:items-center justify-between gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs sm:text-sm">
-                <span className="min-w-0">
-                  Configuração da última busca restaurada. Você tem <strong>{searchState.results.length} leads</strong> na base — toque em <strong>Iniciar Robô</strong> para continuar até a meta ({targetGoal}).
-                </span>
-                <button type="button" onClick={() => setConfigRestored(false)} className="text-blue-600 hover:text-blue-800 font-bold p-2 min-w-[44px] min-h-[44px] rounded touch-manipulation flex-shrink-0" aria-label="Fechar">✕</button>
+              <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+                <span className="min-w-0 truncate">Config. restaurada: <strong>{searchState.results.length} leads</strong> — use Iniciar Robô para meta {targetGoal}.</span>
+                <button type="button" onClick={() => setConfigRestored(false)} className="text-blue-600 hover:text-blue-800 font-bold p-1.5 min-w-[32px] min-h-[32px] rounded touch-manipulation flex-shrink-0" aria-label="Fechar">✕</button>
               </div>
             )}
         </div>
