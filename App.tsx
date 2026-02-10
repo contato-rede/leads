@@ -303,7 +303,7 @@ const App: React.FC = () => {
       while (leadsFoundInSession < goal && !abortControllerRef.current) {
         try {
           const service = new LeadExtractorService(trimmedKey);
-          const contextNames = Array.from(knownNamesSet).slice(-12);
+          const contextNames = Array.from(knownNamesSet).slice(-25);
           const batchPromises = [];
           const currentBatchSize = isAutoLoop ? concurrency : 1;
 
@@ -529,15 +529,24 @@ const App: React.FC = () => {
                         </select>
                     </div>
                 </div>
-                <div className="flex-shrink-0 w-full sm:w-auto">
+                <div className="flex flex-wrap gap-2 flex-shrink-0 w-full sm:w-auto">
                     {searchState.isLooping ? (
-                        <button onClick={() => abortControllerRef.current = true} className="w-full sm:w-auto h-10 min-h-[44px] px-4 bg-slate-900 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-slate-800 active:bg-slate-700 transition-all touch-manipulation text-sm">
+                        <button onClick={() => abortControllerRef.current = true} className="flex-1 sm:flex-initial min-w-0 h-10 min-h-[44px] px-4 bg-slate-900 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-slate-800 active:bg-slate-700 transition-all touch-manipulation text-sm">
                            <StopCircle className="w-4 h-4 flex-shrink-0" /> Parar ({searchState.results.length} · meta {targetGoal})
                         </button>
-                    ) : (
-                        <button onClick={() => executeSearch(true)} disabled={searchState.isLoading || currentCampaignId === '__all__'} className="w-full sm:w-auto h-10 min-h-[44px] px-4 bg-blue-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation text-sm" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
-                           {searchState.isLoading ? <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" /> : <><PlayCircle className="w-4 h-4 flex-shrink-0" /> Iniciar Robô</>}
+                    ) : searchState.isLoading ? (
+                        <button onClick={() => abortControllerRef.current = true} className="flex-1 min-w-0 h-10 min-h-[44px] px-4 bg-slate-800 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-slate-700 transition-all touch-manipulation text-sm">
+                           <StopCircle className="w-4 h-4 flex-shrink-0" /> Parar busca
                         </button>
+                    ) : (
+                        <>
+                            <button onClick={() => executeSearch(false)} disabled={currentCampaignId === '__all__'} className="h-10 min-h-[44px] px-4 rounded-lg font-bold flex items-center justify-center gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50 touch-manipulation text-sm" title="Uma única busca (até ~15 leads), sem loop. Os leads são salvos na hora.">
+                                <Search className="w-4 h-4 flex-shrink-0" /> 1 leva
+                            </button>
+                            <button onClick={() => executeSearch(true)} disabled={currentCampaignId === '__all__'} className="flex-1 min-w-0 h-10 min-h-[44px] px-4 bg-blue-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation text-sm" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
+                               <PlayCircle className="w-4 h-4 flex-shrink-0" /> Iniciar Robô
+                            </button>
+                        </>
                     )}
                 </div>
             </div>

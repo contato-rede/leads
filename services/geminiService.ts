@@ -80,13 +80,13 @@ export class LeadExtractorService {
     }
   }
 
-  /** Máximo de nomes no prompt para reduzir tokens e peso da requisição (evitar limite TPM/RPM). */
-  private static readonly MAX_EXCLUDE_NAMES = 12;
+  /** Nomes a evitar no prompt: mais nomes = menos duplicatas na resposta = mais leads novos por chamada. */
+  private static readonly MAX_EXCLUDE_NAMES = 25;
 
   private buildPrompt(query: string, excludeNames: string[]): string {
     const limited = excludeNames.slice(-LeadExtractorService.MAX_EXCLUDE_NAMES);
     const avoid = limited.length > 0
-      ? ` Skip already have: ${limited.join(", ")}.`
+      ? ` Do NOT include these (we already have them): ${limited.join(", ")}.`
       : "";
 
     return `Find up to 15 NEW business leads for "${query}".${avoid}
