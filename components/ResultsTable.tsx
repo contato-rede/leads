@@ -167,7 +167,7 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({ results, onDelete })
       </div>
       <div className="bg-slate-50 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 text-[10px] sm:text-xs text-slate-500 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 shrink-0">
         <span>Mostrando {sortedResults.length} resultados</span>
-        <span className="hidden sm:inline">Dados fornecidos pelo Google Maps & Search</span>
+        <span className="hidden sm:inline">Dados fornecidos pelo Google Maps</span>
       </div>
     </div>
   );

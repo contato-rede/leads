@@ -269,7 +269,7 @@ const App: React.FC = () => {
     } catch (e) {}
   };
 
-  const executeSearch = useCallback(async (isAutoLoop: boolean = false) => {
+  const executeSearch = useCallback(async (isAutoLoop: boolean = false, stopWhenNoNewLeads: boolean = false) => {
     const trimmedKey = apiKey.trim();
     if (!trimmedKey) {
       setSearchState(prev => ({ ...prev, error: "⚠️ INSIRA SUA CHAVE API.", isLoading: false, isLooping: false }));
@@ -277,9 +277,9 @@ const App: React.FC = () => {
     }
 
     abortControllerRef.current = false;
-    setSearchState(prev => ({ ...prev, isLoading: true, isLooping: isAutoLoop, error: null }));
+    setSearchState(prev => ({ ...prev, isLoading: true, isLooping: true, error: null }));
 
-    if (isAutoLoop) {
+    if (isAutoLoop || stopWhenNoNewLeads) {
       try {
         await storageService.saveSearchConfig({ campaignId: currentCampaignId, query, targetGoal, concurrency });
         const campaign = campaigns.find(c => c.id === currentCampaignId);
@@ -292,7 +292,7 @@ const App: React.FC = () => {
     let localResults = [...resultsRef.current];
     const knownNamesSet = new Set(localResults.map(b => b.name));
     let leadsFoundInSession = 0;
-    const goal = isAutoLoop ? targetGoal : 10;
+    const goal = (isAutoLoop || stopWhenNoNewLeads) ? targetGoal : 10;
     let quotaHitCount = 0;
 
     // Cooldown entre lotes: mais conservador para evitar 429 (1x = 35s, 2x = 28s)
@@ -305,7 +305,7 @@ const App: React.FC = () => {
           const service = new LeadExtractorService(trimmedKey);
           const contextNames = Array.from(knownNamesSet).slice(-25);
           const batchPromises = [];
-          const currentBatchSize = isAutoLoop ? concurrency : 1;
+          const currentBatchSize = (isAutoLoop || stopWhenNoNewLeads) ? concurrency : 1;
 
           for (let i = 0; i < currentBatchSize; i++) {
             if (i > 0) await new Promise(r => setTimeout(r, DELAY_BETWEEN_SAME_BATCH_MS));
@@ -359,11 +359,12 @@ const App: React.FC = () => {
               await new Promise(r => setTimeout(r, 1000));
             }
             setSearchState(prev => ({ ...prev, error: null }));
-          } else if (isAutoLoop && !abortControllerRef.current && leadsFoundInSession < goal) {
+          } else if ((isAutoLoop || stopWhenNoNewLeads) && !abortControllerRef.current && leadsFoundInSession < goal) {
             await new Promise(r => setTimeout(r, BASE_COOLDOWN_MS));
           }
 
-          if (!isAutoLoop) break;
+          if (stopWhenNoNewLeads && batchTotalNew === 0) break;
+          if (!isAutoLoop && !stopWhenNoNewLeads) break;
         } catch (batchError: any) {
           const msg = batchError?.message || String(batchError);
           const is429 = batchError?.status === 429;
@@ -374,7 +375,7 @@ const App: React.FC = () => {
             error: `⚠️ Lote falhou (continuando em 20s): ${msg.slice(0, 50)}`
           }));
           resultsRef.current = [...localResults];
-          if (!abortControllerRef.current && isAutoLoop && leadsFoundInSession < goal) {
+          if (!abortControllerRef.current && (isAutoLoop || stopWhenNoNewLeads) && leadsFoundInSession < goal) {
             await new Promise(r => setTimeout(r, is429 ? 20000 : 15000));
             setSearchState(prev => ({ ...prev, error: null }));
           }
@@ -540,10 +541,10 @@ const App: React.FC = () => {
                         </button>
                     ) : (
                         <>
-                            <button onClick={() => executeSearch(false)} disabled={currentCampaignId === '__all__'} className="h-10 min-h-[44px] px-4 rounded-lg font-bold flex items-center justify-center gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50 touch-manipulation text-sm" title="Uma única busca (até ~15 leads), sem loop. Os leads são salvos na hora.">
+                            <button onClick={() => executeSearch(true, true)} disabled={currentCampaignId === '__all__'} className="h-10 min-h-[44px] px-4 rounded-lg font-bold flex items-center justify-center gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50 touch-manipulation text-sm" title="Busca até a meta (20/100/500) ou até não encontrar mais leads. Para sozinho.">
                                 <Search className="w-4 h-4 flex-shrink-0" /> 1 leva
                             </button>
-                            <button onClick={() => executeSearch(true)} disabled={currentCampaignId === '__all__'} className="flex-1 min-w-0 h-10 min-h-[44px] px-4 bg-blue-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation text-sm" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : undefined}>
+                            <button onClick={() => executeSearch(true, false)} disabled={currentCampaignId === '__all__'} className="flex-1 min-w-0 h-10 min-h-[44px] px-4 bg-blue-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-all disabled:opacity-50 touch-manipulation text-sm" title={currentCampaignId === '__all__' ? 'Selecione uma campanha para rodar o robô' : 'Loop contínuo até a meta (use Parar para interromper)'}>
                                <PlayCircle className="w-4 h-4 flex-shrink-0" /> Iniciar Robô
                             </button>
                         </>
