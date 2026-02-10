@@ -1,0 +1,7 @@
+{
+  "name": "Rede Uniao - Leads Maps",
+  "description": "Uma ferramenta com IA para extrair leads de negócios (Nome, Telefone, Endereço, Site, Avaliação) usando Gemini e Google Maps Grounding.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
