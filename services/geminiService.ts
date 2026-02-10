@@ -80,13 +80,17 @@ export class LeadExtractorService {
     }
   }
 
+  /** Máximo de nomes no prompt para reduzir tokens e peso da requisição (evitar limite TPM/RPM). */
+  private static readonly MAX_EXCLUDE_NAMES = 12;
+
   private buildPrompt(query: string, excludeNames: string[]): string {
-    const avoid = excludeNames.length > 0
-      ? ` Skip: ${excludeNames.join(",")}.`
+    const limited = excludeNames.slice(-LeadExtractorService.MAX_EXCLUDE_NAMES);
+    const avoid = limited.length > 0
+      ? ` Skip already have: ${limited.join(", ")}.`
       : "";
 
-    return `Find 10 NEW business leads for "${query}".${avoid}
-Output ONLY JSON array: [{"name":"","phone":"","address":"","website":"","rating":0,"reviews":0,"category":"","description":""}]`;
+    return `Find up to 15 NEW business leads for "${query}".${avoid}
+Output ONLY a JSON array: [{"name":"","phone":"","address":"","website":"","rating":0,"reviews":0,"category":"","description":""}]`;
   }
 
   private buildConfig(userLocation?: { lat: number; lng: number }): any {

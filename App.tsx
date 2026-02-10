@@ -293,20 +293,22 @@ const App: React.FC = () => {
     const knownNamesSet = new Set(localResults.map(b => b.name));
     let leadsFoundInSession = 0;
     const goal = isAutoLoop ? targetGoal : 10;
+    let quotaHitCount = 0;
 
-    // Atraso de segurança aumentado para 20s para respeitar a cota do plano Free
-    const BASE_COOLDOWN = 20000; 
+    // Cooldown entre lotes: mais conservador para evitar 429 (1x = 35s, 2x = 28s)
+    const BASE_COOLDOWN_MS = concurrency === 1 ? 35000 : 28000;
+    const DELAY_BETWEEN_SAME_BATCH_MS = 3000;
 
     try {
       while (leadsFoundInSession < goal && !abortControllerRef.current) {
         try {
           const service = new LeadExtractorService(trimmedKey);
-          const contextNames = Array.from(knownNamesSet).slice(-25);
+          const contextNames = Array.from(knownNamesSet).slice(-12);
           const batchPromises = [];
           const currentBatchSize = isAutoLoop ? concurrency : 1;
 
           for (let i = 0; i < currentBatchSize; i++) {
-            if (i > 0) await new Promise(r => setTimeout(r, 2000));
+            if (i > 0) await new Promise(r => setTimeout(r, DELAY_BETWEEN_SAME_BATCH_MS));
             batchPromises.push(service.search(query, location, contextNames));
           }
 
@@ -335,41 +337,45 @@ const App: React.FC = () => {
             }
           }
 
+          if (!hitQuotaLimit) quotaHitCount = 0;
+          if (hitQuotaLimit) quotaHitCount += 1;
+
           leadsFoundInSession += batchTotalNew;
           resultsRef.current = [...localResults];
 
+          const pauseSeconds = Math.min(90 + quotaHitCount * 30, 180);
           setSearchState(prev => ({
             ...prev,
             results: [...localResults],
             totalCost: prev.totalCost + batchCost,
             currentLoopCount: leadsFoundInSession,
-            error: hitQuotaLimit ? "☕ LIMITE EXCEDIDO: Pausando 65s para segurança..." : null
+            error: hitQuotaLimit ? `☕ LIMITE: Pausando ${pauseSeconds}s (evitar novo 429)...` : null
           }));
 
           if (hitQuotaLimit) {
-            for (let i = 65; i > 0; i--) {
+            for (let i = pauseSeconds; i > 0; i--) {
               if (abortControllerRef.current) break;
               setSearchState(prev => ({ ...prev, error: `☕ GOOGLE LIMITOU: Retomando em ${i}s...` }));
               await new Promise(r => setTimeout(r, 1000));
             }
             setSearchState(prev => ({ ...prev, error: null }));
           } else if (isAutoLoop && !abortControllerRef.current && leadsFoundInSession < goal) {
-            await new Promise(r => setTimeout(r, BASE_COOLDOWN));
+            await new Promise(r => setTimeout(r, BASE_COOLDOWN_MS));
           }
 
           if (!isAutoLoop) break;
         } catch (batchError: any) {
-          // Erro em um lote não encerra o robô: avisa e continua após cooldown
           const msg = batchError?.message || String(batchError);
+          const is429 = batchError?.status === 429;
           setSearchState(prev => ({
             ...prev,
             results: [...localResults],
             currentLoopCount: leadsFoundInSession,
-            error: `⚠️ Lote falhou (continuando em 15s): ${msg.slice(0, 60)}`
+            error: `⚠️ Lote falhou (continuando em 20s): ${msg.slice(0, 50)}`
           }));
           resultsRef.current = [...localResults];
           if (!abortControllerRef.current && isAutoLoop && leadsFoundInSession < goal) {
-            await new Promise(r => setTimeout(r, 15000));
+            await new Promise(r => setTimeout(r, is429 ? 20000 : 15000));
             setSearchState(prev => ({ ...prev, error: null }));
           }
         }
