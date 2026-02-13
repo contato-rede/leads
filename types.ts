@@ -35,13 +35,13 @@ export interface SearchState {
   totalCost: number;
 }
 
-/** Configuração da última busca, salva no IndexedDB para continuar de onde parou. */
 export interface SearchConfig {
   id: string;
   campaignId?: string;
   query: string;
   niche?: string;
   location_name?: string;
+  locations?: string[];
   minRating?: number;
   onlyWithPhone?: boolean;
   excludeKeywords?: string;
@@ -56,6 +56,7 @@ export interface Campaign {
   query: string;
   niche?: string;
   location_name?: string;
+  locations?: string[];
   minRating?: number;
   onlyWithPhone?: boolean;
   excludeKeywords?: string;
