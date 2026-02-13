@@ -1,6 +1,6 @@
 # Rede Uniao Maps 2.5
 
-Extração de leads com Gemini + Google Maps (grounding). Campanhas, filtro por busca e exportação CSV/Excel.
+Extração de leads com Google Places API. Campanhas, filtro por busca e exportação CSV/Excel.
 
 ## Rodar localmente
 
@@ -25,7 +25,7 @@ No terminal, na pasta do projeto:
 ```bash
 git init
 git add .
-git commit -m "Rede Uniao Maps 2.5 - leads com Gemini"
+git commit -m "Rede Uniao Maps 2.5 - leads com Google Places"
 git branch -M main
 git remote add origin https://github.com/SEU_USUARIO/leads.git
 git push -u origin main

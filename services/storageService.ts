@@ -24,7 +24,7 @@ export class StorageService {
       const request = indexedDB.open(this.dbName, this.version);
 
       request.onerror = () => reject("Erro ao abrir banco de dados");
-      
+
       request.onsuccess = (event) => {
         this.db = (event.target as IDBOpenDBRequest).result;
         resolve();
@@ -79,7 +79,7 @@ export class StorageService {
       // Ensure we don't overwrite if ID conflicts (rare with timestamp ID), 
       // but put is generally fine.
       const request = store.put(lead);
-      
+
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject("Erro ao salvar lead");
     });
@@ -93,7 +93,7 @@ export class StorageService {
       // e todas as alterações pendentes são revertidas automaticamente pelo IndexedDB.
       const transaction = db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
-      
+
       transaction.oncomplete = () => {
         // Só resolve quando TODAS as operações foram commitadas no disco com sucesso.
         resolve();
@@ -162,7 +162,7 @@ export class StorageService {
       const transaction = db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
       store.delete(id);
-      
+
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject("Erro ao deletar lead");
     });
@@ -174,7 +174,7 @@ export class StorageService {
       const transaction = db.transaction([this.storeName], 'readwrite');
       const store = transaction.objectStore(this.storeName);
       store.clear();
-      
+
       transaction.oncomplete = () => resolve();
       transaction.onerror = (e) => {
         console.error("Transaction error during clearAll:", (e.target as any).error);
@@ -266,7 +266,6 @@ export class StorageService {
             name: 'Campanha padrão',
             query: '',
             targetGoal: 100,
-            concurrency: 1,
             updatedAt: Date.now(),
           });
         }
@@ -318,7 +317,16 @@ export class StorageService {
     });
     if (data.searchConfig) {
       const c = data.searchConfig;
-      await this.saveSearchConfig({ query: c.query, targetGoal: c.targetGoal, concurrency: c.concurrency, campaignId: c.campaignId });
+      await this.saveSearchConfig({
+        query: c.query,
+        targetGoal: c.targetGoal,
+        campaignId: c.campaignId,
+        niche: c.niche,
+        location_name: c.location_name,
+        minRating: c.minRating,
+        onlyWithPhone: c.onlyWithPhone,
+        excludeKeywords: c.excludeKeywords
+      });
     }
     await this.ensureDefaultCampaign();
   }

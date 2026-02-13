@@ -40,8 +40,12 @@ export interface SearchConfig {
   id: string;
   campaignId?: string;
   query: string;
+  niche?: string;
+  location_name?: string;
+  minRating?: number;
+  onlyWithPhone?: boolean;
+  excludeKeywords?: string;
   targetGoal: number;
-  concurrency: number;
   updatedAt: number;
 }
 
@@ -50,8 +54,12 @@ export interface Campaign {
   id: string;
   name: string;
   query: string;
+  niche?: string;
+  location_name?: string;
+  minRating?: number;
+  onlyWithPhone?: boolean;
+  excludeKeywords?: string;
   targetGoal: number;
-  concurrency: number;
   updatedAt: number;
 }
 
