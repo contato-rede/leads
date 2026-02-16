@@ -20,42 +20,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
         if (!apiKey) {
+            console.error('[Proxy] API key not configured in environment variables');
             return res.status(500).json({
                 error: 'API key not configured',
                 status: 'REQUEST_DENIED'
             });
         }
 
-        // Extract the original path from the request
+        // The Vercel rewrite sends requests like:
+        // /api/google-proxy/maps/api/place/textsearch/json?key=...&query=...
+        // We need to extract everything after /api/google-proxy
         const originalUrl = req.url || '';
 
-        // Remove /api/google-proxy prefix and get the actual Google API path
-        // Example: /api/google-proxy?url=/maps/api/place/textsearch/json&key=...
-        const urlParams = new URL(originalUrl, `https://${req.headers.host}`);
-        const targetPath = urlParams.pathname.replace('/api/google-proxy', '');
+        // Split URL into path and query
+        const [fullPath, queryString] = originalUrl.split('?');
+
+        // Remove /api/google-proxy prefix to get the Google API path
+        // Example: /api/google-proxy/maps/api/place/textsearch/json -> /maps/api/place/textsearch/json
+        const googleApiPath = fullPath.replace('/api/google-proxy', '') || '/maps/api/place/textsearch/json';
 
         // Reconstruct the full Google API URL
-        let googleApiUrl = `https://maps.googleapis.com${targetPath}`;
+        let googleApiUrl = `https://maps.googleapis.com${googleApiPath}`;
 
-        // Add query parameters
-        const queryParams = new URLSearchParams(urlParams.search);
+        // Parse and update query parameters
+        const queryParams = new URLSearchParams(queryString || '');
 
         // Replace the client's API key with the server's secure key
         queryParams.set('key', apiKey);
 
         googleApiUrl += `?${queryParams.toString()}`;
 
-        console.log('[Proxy] Forwarding request to:', googleApiUrl.replace(apiKey, 'API_KEY_HIDDEN'));
+        console.log('[Proxy] Original URL:', originalUrl);
+        console.log('[Proxy] Google API path:', googleApiPath);
+        console.log('[Proxy] Forwarding to:', googleApiUrl.replace(apiKey, 'API_KEY_HIDDEN'));
 
         // Make the request to Google API
         const response = await fetch(googleApiUrl, {
-            method: req.method,
+            method: req.method || 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
         });
 
         const data = await response.json();
+
+        console.log('[Proxy] Response status:', response.status);
+        console.log('[Proxy] Response data status:', data.status);
 
         // Return the response
         return res.status(response.status).json(data);
