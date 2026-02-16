@@ -18,7 +18,7 @@ const NewCampaignModal: React.FC<{
   defaultNiche: string;
   defaultLocations: string[];
 }> = ({ onConfirm, onClose, defaultNiche, defaultLocations }) => {
-  const [name, setName] = useState('Nova campanha');
+  const [name, setName] = useState('');
   const [niche, setNiche] = useState(defaultNiche);
   const [locations, setLocations] = useState<string[]>(defaultLocations);
 
@@ -136,7 +136,7 @@ const EditCampaignModal: React.FC<{ campaign: Campaign; onSave: (c: Campaign) =>
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>('');
-  const [query, setQuery] = useState<string>('Retifica de Motores em Santa Catarina');
+  const [query, setQuery] = useState<string>('');
   const [targetGoal, setTargetGoal] = useState<number>(100);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -147,8 +147,8 @@ const App: React.FC = () => {
   const [isDeepSearch, setIsDeepSearch] = useState(false);
   const [showApiKeyConfig, setShowApiKeyConfig] = useState(false);
   const [dailyBudget, setDailyBudget] = useState<number>(10.00);
-  const [niche, setNiche] = useState<string>('Retifica de Motores');
-  const [locations, setLocations] = useState<string[]>(['Santa Catarina']);
+  const [niche, setNiche] = useState<string>('');
+  const [locations, setLocations] = useState<string[]>([]);
   const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
   const [minRating, setMinRating] = useState<number>(0);
   const [onlyWithPhone, setOnlyWithPhone] = useState<boolean>(false);
