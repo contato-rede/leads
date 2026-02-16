@@ -64,7 +64,7 @@ export class LeadExtractorService {
         try {
             // 1. First Call: Text Search
             // If we have a next_page_token, use it. Otherwise, normal search.
-            let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?key=${this.apiKey}`;
+            let url = `/google-api/maps/api/place/textsearch/json?key=${this.apiKey}`;
 
             if (this.nextPageToken) {
                 url += `&pagetoken=${this.nextPageToken}`;
@@ -206,7 +206,7 @@ export class LeadExtractorService {
         excludeNames: string[] = []
     ): Promise<SearchResult> {
         try {
-            let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${this.apiKey}`;
+            let url = `/google-api/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${this.apiKey}`;
 
             if (keyword) {
                 url += `&keyword=${encodeURIComponent(keyword)}`;
@@ -217,7 +217,7 @@ export class LeadExtractorService {
             }
 
             if (this.nextPageToken) {
-                url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${this.nextPageToken}&key=${this.apiKey}`;
+                url = `/google-api/maps/api/place/nearbysearch/json?pagetoken=${this.nextPageToken}&key=${this.apiKey}`;
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
 
@@ -283,7 +283,7 @@ export class LeadExtractorService {
         viewport?: { ne: { lat: number; lng: number }; sw: { lat: number; lng: number } }
     } | null> {
         try {
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
+            const url = `/google-api/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
             const response = await fetch(url);
             if (!response.ok) return null;
 
@@ -391,7 +391,7 @@ export class LeadExtractorService {
     private async getPlaceDetails(place: any, index: number): Promise<Business | null> {
         try {
             const fields = 'name,formatted_phone_number,website,formatted_address,rating,user_ratings_total,types';
-            const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=${fields}&key=${this.apiKey}`;
+            const url = `/google-api/maps/api/place/details/json?place_id=${place.place_id}&fields=${fields}&key=${this.apiKey}`;
 
             const response = await fetch(url, {
                 signal: AbortSignal.timeout(10000) // 10 segundos timeout
