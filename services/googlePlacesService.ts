@@ -64,7 +64,7 @@ export class LeadExtractorService {
         try {
             // 1. First Call: Text Search
             // If we have a next_page_token, use it. Otherwise, normal search.
-            let url = `/google-api/maps/api/place/textsearch/json?key=${this.apiKey}`;
+            let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?key=${this.apiKey}`;
 
             if (this.nextPageToken) {
                 url += `&pagetoken=${this.nextPageToken}`;
@@ -112,7 +112,7 @@ export class LeadExtractorService {
                 // Token might be invalid or expired (usually not ready yet)
                 if (searchData.status === 'INVALID_REQUEST' && this.nextPageToken) {
                     this.retryCount++;
-                                
+
                     if (this.retryCount > this.MAX_RETRIES) {
                         console.warn(`[PlacesAPI] Max retries (${this.MAX_RETRIES}) reached for page token. Moving to next page.`);
                         this.nextPageToken = null;
@@ -124,7 +124,7 @@ export class LeadExtractorService {
                             estimatedCost: 0
                         };
                     }
-                                
+
                     console.warn(`[PlacesAPI] Page token not ready yet. Retry ${this.retryCount}/${this.MAX_RETRIES}...`);
                     // Wait longer for each retry to give Google more time
                     const waitTime = 2000 + (this.retryCount * 1000); // 2s, 3s, 4s
@@ -206,7 +206,7 @@ export class LeadExtractorService {
         excludeNames: string[] = []
     ): Promise<SearchResult> {
         try {
-            let url = `/google-api/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${this.apiKey}`;
+            let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${this.apiKey}`;
 
             if (keyword) {
                 url += `&keyword=${encodeURIComponent(keyword)}`;
@@ -217,7 +217,7 @@ export class LeadExtractorService {
             }
 
             if (this.nextPageToken) {
-                url = `/google-api/maps/api/place/nearbysearch/json?pagetoken=${this.nextPageToken}&key=${this.apiKey}`;
+                url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${this.nextPageToken}&key=${this.apiKey}`;
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
 
@@ -283,7 +283,7 @@ export class LeadExtractorService {
         viewport?: { ne: { lat: number; lng: number }; sw: { lat: number; lng: number } }
     } | null> {
         try {
-            const url = `/google-api/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
             const response = await fetch(url);
             if (!response.ok) return null;
 
@@ -391,7 +391,7 @@ export class LeadExtractorService {
     private async getPlaceDetails(place: any, index: number): Promise<Business | null> {
         try {
             const fields = 'name,formatted_phone_number,website,formatted_address,rating,user_ratings_total,types';
-            const url = `/google-api/maps/api/place/details/json?place_id=${place.place_id}&fields=${fields}&key=${this.apiKey}`;
+            const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=${fields}&key=${this.apiKey}`;
 
             const response = await fetch(url, {
                 signal: AbortSignal.timeout(10000) // 10 segundos timeout
