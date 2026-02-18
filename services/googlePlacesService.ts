@@ -26,6 +26,10 @@ export class LeadExtractorService {
         if (!apiKey) {
             throw new Error("API Key is required.");
         }
+        // Validar formato básico da chave do Google API (começa com "AIza...")
+        if (!apiKey.startsWith('AIza')) {
+            console.warn("Aviso: A chave API não parece seguir o formato padrão do Google (AIza...)");
+        }
         this.apiKey = apiKey;
     }
 

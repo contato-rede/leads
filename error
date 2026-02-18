@@ -1,0 +1,20 @@
+index.css:1  Failed to load resource: the server responded with a status of 404 ()
+(index):64 cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+(anonymous) @ (index):64
+content.js:10 Mapify:warn Element not found for selector: 'mapify-window'
+log @ content.js:10
+/google-api/maps/api/place/textsearch/json?key=AIzaSyBp1vtAMKKJexLvDcysf8rA3XRKaUjdKEs&query=Retifica%20em%20Santa%20Catarina&location=-27.06792014378798,-52.638243998964136:1  Failed to load resource: the server responded with a status of 500 ()
+index-UkX2-Z_B.js:254 Error in GooglePlacesService: Error: Google Places Text Search failed: 
+    at w4.search (index-UkX2-Z_B.js:254:1220)
+    at async index-UkX2-Z_B.js:350:32851
+search @ index-UkX2-Z_B.js:254
+index.css:1  Failed to load resource: the server responded with a status of 404 ()
+index-UkX2-Z_B.js:254  GET https://leads-gules.vercel.app/google-api/maps/api/place/textsearch/json?key=AIzaSyBp1vtAMKKJexLvDcysf8rA3XRKaUjdKEs&query=Retifica%20em%20Santa%20Catarina&location=-27.06792014378798,-52.638243998964136 500 (Internal Server Error)
+search @ index-UkX2-Z_B.js:254
+(anonymous) @ index-UkX2-Z_B.js:350
+index-UkX2-Z_B.js:254 Error in GooglePlacesService: Error: Google Places Text Search failed: 
+    at w4.search (index-UkX2-Z_B.js:254:1220)
+    at async index-UkX2-Z_B.js:350:32851
+search @ index-UkX2-Z_B.js:254
+await in search
+(anonymous) @ index-UkX2-Z_B.js:350

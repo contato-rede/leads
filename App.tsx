@@ -171,15 +171,11 @@ const App: React.FC = () => {
   resultsRef.current = searchState.results;
 
   useEffect(() => {
-    if (process.env.API_KEY) {
-      setApiKey(process.env.API_KEY);
+    const savedKey = localStorage.getItem('google_places_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
     } else {
-      const savedKey = localStorage.getItem('google_places_api_key');
-      if (savedKey) {
-        setApiKey(savedKey);
-      } else {
-        setShowApiKeyConfig(true);
-      }
+      setShowApiKeyConfig(true);
     }
 
     const savedBudget = localStorage.getItem('google_places_daily_budget');
@@ -189,7 +185,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (apiKey && !process.env.API_KEY) {
+    if (apiKey) {
       localStorage.setItem('google_places_api_key', apiKey);
     }
   }, [apiKey]);
@@ -377,6 +373,12 @@ const App: React.FC = () => {
     const trimmedKey = apiKey.trim();
     if (!trimmedKey) {
       setSearchState(prev => ({ ...prev, error: "⚠️ INSIRA SUA CHAVE API.", isLoading: false, isLooping: false }));
+      return;
+    }
+    
+    // Validar formato da chave API
+    if (!trimmedKey.startsWith('AIza')) {
+      setSearchState(prev => ({ ...prev, error: "⚠️ CHAVE API INVÁLIDA. A chave deve começar com 'AIza'.", isLoading: false, isLooping: false }));
       return;
     }
 

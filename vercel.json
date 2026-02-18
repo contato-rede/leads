@@ -7,7 +7,7 @@
     "rewrites": [
         {
             "source": "/google-api/(.*)",
-            "destination": "/api/google-proxy"
+            "destination": "/api/google-proxy?endpoint=$1"
         }
     ]
 }

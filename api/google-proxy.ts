@@ -16,43 +16,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        // Get API key from environment variable
-        const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+        // 1. Get the endpoint from the query parameter (set by vercel.json rewrite)
+        // URL: /api/google-proxy?endpoint=maps/api/place/textsearch/json&key=...
+        // The 'key' parameter comes from the client request (appended by Vercel rewrite)
+        const { endpoint, key, ...otherQueryParams } = req.query;
 
-        if (!apiKey) {
-            console.error('[Proxy] API key not configured in environment variables');
-            return res.status(500).json({
-                error: 'API key not configured',
+        if (!endpoint || Array.isArray(endpoint)) {
+            return res.status(400).json({
+                error: 'Invalid endpoint parameter',
+                status: 'INVALID_REQUEST'
+            });
+        }
+
+        // 2. Validate API Key from Client
+        // We now require the client to send the key (which they do via the query param)
+        const clientApiKey = key;
+
+        if (!clientApiKey) {
+            return res.status(401).json({
+                error: 'API Key missing. Please provide your Google Places API Key in the application settings.',
+                status: 'REQUEST_DENIED'
+            });
+        }
+        
+        // Additional validation: check if the API key has a valid format (starts with "AIza...")
+        const apiKeyValue = Array.isArray(clientApiKey) ? clientApiKey[0] : clientApiKey;
+        if (!apiKeyValue.startsWith('AIza')) {
+            console.error('[Proxy] Invalid API key format received');
+            return res.status(401).json({
+                error: 'API Key format invalid. Google API keys should start with "AIza".',
                 status: 'REQUEST_DENIED'
             });
         }
 
-        // The Vercel rewrite sends requests like:
-        // /api/google-proxy/maps/api/place/textsearch/json?key=...&query=...
-        // We need to extract everything after /api/google-proxy
-        const originalUrl = req.url || '';
+        // 3. Reconstruct the full Google API URL
+        let googleApiUrl = `https://maps.googleapis.com/${endpoint}`;
 
-        // Split URL into path and query
-        const [fullPath, queryString] = originalUrl.split('?');
+        // 4. Add query parameters
+        const queryParams = new URLSearchParams();
 
-        // Remove /api/google-proxy prefix to get the Google API path
-        // Example: /api/google-proxy/maps/api/place/textsearch/json -> /maps/api/place/textsearch/json
-        const googleApiPath = fullPath.replace('/api/google-proxy', '') || '/maps/api/place/textsearch/json';
+        // Add all other query params from the request
+        Object.entries(otherQueryParams).forEach(([k, value]) => {
+            if (Array.isArray(value)) {
+                value.forEach(v => queryParams.append(k, v));
+            } else if (value) {
+                queryParams.append(k, value);
+            }
+        });
 
-        // Reconstruct the full Google API URL
-        let googleApiUrl = `https://maps.googleapis.com${googleApiPath}`;
-
-        // Parse and update query parameters
-        const queryParams = new URLSearchParams(queryString || '');
-
-        // Replace the client's API key with the server's secure key
-        queryParams.set('key', apiKey);
+        // Add the API Key (explicitly from the client request)
+        if (Array.isArray(clientApiKey)) {
+            queryParams.set('key', clientApiKey[0]);
+        } else if (clientApiKey) {
+            queryParams.set('key', clientApiKey);
+        }
 
         googleApiUrl += `?${queryParams.toString()}`;
 
-        console.log('[Proxy] Original URL:', originalUrl);
-        console.log('[Proxy] Google API path:', googleApiPath);
-        console.log('[Proxy] Forwarding to:', googleApiUrl.replace(apiKey, 'API_KEY_HIDDEN'));
+        // Log masked URL for debugging
+        const maskedUrl = googleApiUrl.replace(/key=([^&]*)/, 'key=API_KEY_HIDDEN');
+        console.log('[Proxy] Original URL:', req.url); // Use req.url for original URL
+        console.log('[Proxy] Google API path:', endpoint); // Use endpoint for Google API path
+        console.log('[Proxy] Forwarding to:', maskedUrl);
 
         // Make the request to Google API
         const response = await fetch(googleApiUrl, {
