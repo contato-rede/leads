@@ -348,13 +348,16 @@ export class LeadExtractorService {
     /**
      * Extracts the business category from a query by removing location-related parts.
      * Example: "Retífica em Santa Catarina" -> "Retífica"
-     * Example: "Clínicas, Chapecó" -> "Clínicas"
+     * Example: "Clínicas, Chapecó" -> "Clínicas" (when "Chapecó" is not in location context)
+     * Updated: Queries with comma like "term1, term2" are treated as combined search terms
      */
     public extractCategory(query: string): string {
         if (!query) return "";
 
         // Remove everything after common separators (including " em ", " de ", etc.)
-        const separators = [",", " - ", " – ", " em ", " no ", " na ", " de ", " in ", " near ", " perto de ", "|"];
+        // We do NOT split by comma anymore, as per requirements.
+        // Comma is treated as part of the category/service search (e.g. "Mechanic, Diesel")
+        const separators = [" - ", " – ", " em ", " no ", " na ", " de ", " in ", " near ", " perto de ", "|"];
         let cleaned = query;
 
         for (const sep of separators) {
@@ -368,14 +371,16 @@ export class LeadExtractorService {
     }
 
     /**
-     * Extracts the location part from a query (everything after separators).
+     * Extracts the location part from a query (everything after location-specific separators).
      * Example: "Retífica de motores em Santa Catarina" -> "Santa Catarina"
+     * Updated: Only extracts location from location-specific separators, ignores comma
      */
     public extractLocation(query: string): string {
         if (!query) return "";
 
-        // Prioritize structured prepositions over generic punctuation (like commas within a location name)
-        const separators = [" em ", " no ", " na ", " in ", " - ", " – ", " near ", " perto de ", ",", "|"];
+        // Only use location-specific separators.
+        // We explicitly ignore commas here to ensure "mechanic, diesel" is not treated as location.
+        const separators = [" em ", " no ", " na ", " in ", " - ", " – ", " near ", " perto de ", "|"];
 
         for (const sep of separators) {
             const index = query.toLowerCase().indexOf(sep);
@@ -386,7 +391,36 @@ export class LeadExtractorService {
             }
         }
 
-        return query;
+        return "";
+    }
+
+    /**
+     * Validates if a string looks like a location based on common patterns
+     */
+    private isValidLocation(location: string): boolean {
+        if (!location) return false;
+
+        // Check if it contains typical location indicators
+        const locationIndicators = [
+            'sul', 'norte', 'leste', 'oeste',
+            'centro', 'bairro', 'cidade', 'estado', 'região',
+            'sp', 'rj', 'mg', 'rs', 'sc', 'pr', 'df', 'go', 'mt', 'ms',
+            'ba', 'se', 'al', 'pe', 'pb', 'rn', 'ce', 'pi', 'ma', 'pa',
+            'am', 'rr', 'ap', 'to', 'ro', 'ac', 'pb', 'rn', 'ce', 'ma', 'pa',
+            'sul', 'sudeste', 'norte', 'nordeste', 'centro-oeste',
+            'brasil', 'br', 'brazil'
+        ];
+
+        const lowerLoc = location.toLowerCase();
+
+        // If it contains location indicators, it's likely a location
+        if (locationIndicators.some(indicator => lowerLoc.includes(indicator))) {
+            return true;
+        }
+
+        // Check if it looks like a city/state name (not too short, has proper capitalization pattern)
+        const words = location.trim().split(/\s+/);
+        return words.length >= 1 && location.length > 2;
     }
 
     /**
